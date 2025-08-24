@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>سیستم مدیریت اطلاعات پزشکی</title>
+    <style>
+        body { font-family: sans-serif; direction: rtl; padding: 20px; background: #f0f0f0; }
+        .container { background: white; padding: 20px; border-radius: 10px; max-width: 700px; margin: auto; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        input, select, textarea, button { width: 100%; padding: 8px; margin-top: 4px; }
+        .tabs { display: flex; gap: 10px; margin-top: 20px; }
+        .tab-btn { flex: 1; background: #eee; border: none; padding: 10px; cursor: pointer; }
+        .tab-btn.active { background: #007bff; color: white; }
+        .tab-content { display: none; margin-top: 20px; }
+        .tab-content.active { display: block; }
+        .file-info { font-size: 12px; color: gray; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>سیستم مدیریت اطلاعات پزشکی</h1>
+        <div class="search-box">
+            <input type="text" id="patientCode" placeholder="کد 10 رقمی بیمار را وارد کنید" maxlength="10">
+            <button id="searchBtn">جستجو</button>
+            <button id="deletePatientBtn">حذف اطلاعات بیمار</button>
+        </div>
+
+        <div id="results" style="display:none">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="drugs">داروها</button>
+                <button class="tab-btn" data-tab="imaging">تصویربرداری</button>
+                <button class="tab-btn" data-tab="lab">آزمایشگاه</button>
+            </div>
+
+            <div id="drugs" class="tab-content active">
+                <div class="form-group">
+                    <label for="drugNameText">نام دارو:</label>
+                    <input type="text" id="drugNameText">
+                </div>
+                <div class="form-group">
+                    <label for="usageText">نحوه مصرف:</label>
+                    <input type="text" id="usageText">
+                </div>
+                <div class="form-group">
+                    <label for="doctorName">نام پزشک:</label>
+                    <input type="text" id="doctorName">
+                </div>
+                <div class="form-group">
+                    <label for="drugFile">فایل نسخه:</label>
+                    <input type="file" id="drugFile" accept=".jpg,.png,.pdf">
+                    <div class="file-info">حداکثر حجم: ۳ مگابایت</div>
+                </div>
+                <button id="saveDrug">ذخیره اطلاعات</button>
+            </div>
+
+            <div id="imaging" class="tab-content">
+                <div class="form-group">
+                    <label for="imagingDoctor">نام پزشک:</label>
+                    <input type="text" id="imagingDoctor">
+                </div>
+                <div class="form-group">
+                    <label for="imagingType">نوع تصویربرداری:</label>
+                    <select id="imagingType">
+                        <option value="">-- انتخاب کنید --</option>
+                        <option value="MRI">MRI</option>
+                        <option value="SONO">سونوگرافی</option>
+                        <option value="CT">سی تی اسکن</option>
+                        <option value="X_RAY">اشعه ایکس</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="imagingProblem">مشکل بیمار:</label>
+                    <textarea id="imagingProblem"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="imagingFile">فایل تصویربرداری:</label>
+                    <input type="file" id="imagingFile" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+                <button id="saveImaging">ذخیره اطلاعات</button>
+            </div>
+
+            <div id="lab" class="tab-content">
+                <div class="form-group">
+                    <label for="labTest">نام آزمایش:</label>
+                    <input type="text" id="labTest">
+                </div>
+                <div class="form-group">
+                    <label for="labDoctor">نام پزشک:</label>
+                    <input type="text" id="labDoctor">
+                </div>
+                <div class="form-group">
+                    <label for="labFile">فایل آزمایش:</label>
+                    <input type="file" id="labFile" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+                <button id="saveLab">ذخیره اطلاعات</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    function downloadTextFile(content, filename = "patient-info.txt") {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url); // آزادسازی حافظه
+}
+
+    function downloadFile(inputId) {
+    const fileInput = document.getElementById(inputId);
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (!validateFile(file)) return alert("حجم فایل بیشتر از ۳ مگابایت است");
+
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url); // آزادسازی حافظه
+}
+
+document.getElementById('saveDrug').addEventListener('click', () => {
+    const data = {
+        drugName: document.getElementById('drugNameText').value.trim(),
+        usage: document.getElementById('usageText').value.trim(),
+        drugDoctor: document.getElementById('doctorName').value.trim()
+    };
+    savePatientField(data);
+    downloadFile('drugFile');
+    alert('اطلاعات دارویی ذخیره شد و فایل دانلود شد');
+    clearFields();
+});
+
+document.getElementById('saveImaging').addEventListener('click', () => {
+    const data = {
+        imagingDoctor: document.getElementById('imagingDoctor').value.trim(),
+        imagingType: document.getElementById('imagingType').value,
+        imagingProblem: document.getElementById('imagingProblem').value.trim()
+    };
+    savePatientField(data);
+    downloadFile('imagingFile');
+    alert('اطلاعات تصویربرداری ذخیره شد و فایل دانلود شد');
+    clearFields();
+});
+
+document.getElementById('saveLab').addEventListener('click', () => {
+    const data = {
+        labTest: document.getElementById('labTest').value.trim(),
+        labDoctor: document.getElementById('labDoctor').value.trim()
+    };
+    savePatientField(data);
+    downloadFile('labFile');
+    alert('اطلاعات آزمایشگاه ذخیره شد و فایل دانلود شد');
+    clearFields();
+});
+// بالایی باید پاک شه
+const patientStorageKey = 'patients';
+
+function validateFile(file) {
+    return !(file && file.size > 3 * 1024 * 1024);
+}
+
+function getCurrentPatientCode() {
+    return document.getElementById('patientCode').value.trim();
+}
+
+function loadPatientData(code) {
+    const all = JSON.parse(localStorage.getItem(patientStorageKey) || '{}');
+    const data = all[code];
+    if (!data) return;
+
+    document.getElementById('drugNameText').value = data.drugName || '';
+    document.getElementById('usageText').value = data.usage || '';
+    document.getElementById('doctorName').value = data.drugDoctor || '';
+    document.getElementById('imagingDoctor').value = data.imagingDoctor || '';
+    document.getElementById('imagingType').value = data.imagingType || '';
+    document.getElementById('imagingProblem').value = data.imagingProblem || '';
+    document.getElementById('labTest').value = data.labTest || '';
+    document.getElementById('labDoctor').value = data.labDoctor || '';
+}
+
+function clearFields() {
+    ['drugNameText','usageText','doctorName','drugFile','imagingDoctor','imagingType','imagingProblem','imagingFile','labTest','labDoctor','labFile']
+    .forEach(id => document.getElementById(id).value = '');
+}
+
+function savePatientField(data) {
+    const code = getCurrentPatientCode();
+    if (code.length !== 10 || !/\d{10}/.test(code)) return;
+    const all = JSON.parse(localStorage.getItem(patientStorageKey) || '{}');
+    all[code] = { ...(all[code] || {}), ...data };
+    localStorage.setItem(patientStorageKey, JSON.stringify(all));
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+});
+
+document.getElementById('searchBtn').addEventListener('click', () => {
+    const code = getCurrentPatientCode();
+    if (code.length !== 10 || !/\d{10}/.test(code)) return alert('کد ملی معتبر نیست');
+    document.getElementById('results').style.display = 'block';
+    loadPatientData(code);
+});
+
+document.getElementById('deletePatientBtn').addEventListener('click', () => {
+    const code = getCurrentPatientCode();
+    const all = JSON.parse(localStorage.getItem(patientStorageKey) || '{}');
+    if (!all[code]) return alert('اطلاعاتی برای این کد وجود ندارد');
+    if (confirm('آیا مطمئن هستید؟')) {
+        delete all[code];
+        localStorage.setItem(patientStorageKey, JSON.stringify(all));
+        alert('اطلاعات بیمار حذف شد');
+        clearFields();
+    }
+});
+
+document.getElementById('saveDrug').addEventListener('click', () => {
+    const data = {
+        drugName: document.getElementById('drugNameText').value.trim(),
+        usage: document.getElementById('usageText').value.trim(),
+        drugDoctor: document.getElementById('doctorName').value.trim()
+    };
+    savePatientField(data);
+    alert('اطلاعات دارویی ذخیره شد');
+    clearFields();
+});
+
+document.getElementById('saveImaging').addEventListener('click', () => {
+    const data = {
+        imagingDoctor: document.getElementById('imagingDoctor').value.trim(),
+        imagingType: document.getElementById('imagingType').value,
+        imagingProblem: document.getElementById('imagingProblem').value.trim()
+    };
+    savePatientField(data);
+    alert('اطلاعات تصویربرداری ذخیره شد');
+    clearFields();
+});
+
+document.getElementById('saveLab').addEventListener('click', () => {
+    const data = {
+        labTest: document.getElementById('labTest').value.trim(),
+        labDoctor: document.getElementById('labDoctor').value.trim()
+    };
+    savePatientField(data);
+    alert('اطلاعات آزمایشگاه ذخیره شد');
+    clearFields();
+});
+</script>
+
+</body>
+</html>
