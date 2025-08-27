@@ -124,3 +124,77 @@ document.querySelectorAll('.delete-btn').forEach(btn => {
 function saveToDesktop(section) {
     console.log(`اطلاعات بخش ${section} ذخیره شد`);
 }
+const API_URL = "https://YOUR_DOMAIN_HERE/save_patient.php";
+
+// ارسال فرم به سرور
+function sendFormData(formData) {
+    fetch(API_URL, {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => alert(data.message))
+    .catch(err => {
+        alert("خطا در ذخیره اطلاعات");
+        console.error(err);
+    });
+}
+
+// ذخیره دارو
+document.getElementById('saveDrug').addEventListener('click', () => {
+    const formData = new FormData();
+    formData.append("patientCode", document.getElementById('patientCode').value.trim());
+    formData.append("drugName", document.getElementById('drugNameText').value.trim());
+    formData.append("usage", document.getElementById('usageText').value.trim());
+    formData.append("doctor", document.getElementById('doctorName').value.trim());
+    formData.append("drugFile", document.getElementById('drugFile').files[0]);
+    sendFormData(formData);
+});
+
+// ذخیره تصویربرداری
+document.getElementById('saveImaging').addEventListener('click', () => {
+    const formData = new FormData();
+    formData.append("patientCode", document.getElementById('patientCode').value.trim());
+    formData.append("imagingFile", document.getElementById('imagingFile').files[0]);
+    sendFormData(formData);
+});
+
+// ذخیره آزمایشگاه
+document.getElementById('saveLab').addEventListener('click', () => {
+    const formData = new FormData();
+    formData.append("patientCode", document.getElementById('patientCode').value.trim());
+    formData.append("labFile", document.getElementById('labFile').files[0]);
+    sendFormData(formData);
+});
+
+// بازیابی اطلاعات بیمار
+document.getElementById('searchBtn').addEventListener('click', () => {
+    const patientCode = document.getElementById('patientCode').value.trim();
+    if(patientCode.length !== 10 || !/^\d+$/.test(patientCode)) {
+        alert("لطفا کد ملی 10 رقمی معتبر وارد کنید");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("patientCode", patientCode);
+    formData.append("action", "getPatient");
+
+    fetch(API_URL, { method: "POST", body: formData })
+    .then(res => res.json())
+    .then(res => {
+        if(res.status === "success" && res.data) {
+            const data = res.data;
+            document.getElementById('drugNameText').value = data.drugName || "";
+            document.getElementById('usageText').value = data.usageText || "";
+            document.getElementById('doctorName').value = data.doctor || "";
+
+            // فایل‌ها فقط اسمشون رو نمایش میدیم
+            document.getElementById('drugFileName').innerText = data.drugFile || "ندارد";
+            document.getElementById('imagingFileName').innerText = data.imagingFile || "ندارد";
+            document.getElementById('labFileName').innerText = data.labFile || "ندارد";
+        } else {
+            alert("اطلاعاتی برای این بیمار پیدا نشد");
+        }
+    })
+    .catch(err => console.error(err));
+});
